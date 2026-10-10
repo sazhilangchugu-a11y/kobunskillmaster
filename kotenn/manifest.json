@@ -1,0 +1,21 @@
+{
+  "name": "古典用言ますたー",
+  "short_name": "古典マスター",
+  "description": "古文の助動詞・用言をマスターする演習・暗記アプリ",
+  "start_url": "./koten.html",
+  "display": "standalone",
+  "background_color": "#f7f4ed",
+  "theme_color": "#c8392b",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
