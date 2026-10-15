@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>古文 用言 演習帳Ver.1.2</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts for Elegant Japanese Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;800&family=Zen+Kaku+Gothic+New:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            washi: '#f7f4ed',
+            sumi: '#2b2b2b',
+            nightSumi: '#12161f',
+            nightCard: '#1a202c',
+            gold: '#c5a059',
+            vermilion: '#c8392b',
+            indigo: '#1d2a44'
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Zen Kaku Gothic New', sans-serif;
+      transition: background-color 0.3s, color 0.3s;
+    }
+    .font-japanese-title {
+      font-family: 'Shippori Mincho', serif;
+    }
+    /* Red Sheet Utility */
+    .red-sheet-hidden {
+      background-color: #ef4444 !important;
+      color: #ef4444 !important;
+      user-select: none;
+      cursor: pointer;
+      transition: background-color 0.15s ease, color 0.15s ease;
+      border-radius: 0.25rem;
+      padding: 0 3px;
+      display: inline-block;
+    }
+    .red-sheet-hidden.revealed {
+      background-color: transparent !important;
+      color: inherit !important;
+    }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.05);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #c5a059;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body class="bg-washi text-sumi dark:bg-nightSumi dark:text-gray-100 min-h-screen flex flex-col transition-colors duration-300">
+
+  <header class="border-b-2 border-gold/40 bg-white/80 dark:bg-nightCard/80 backdrop-blur sticky top-0 z-50 px-4 py-3 shadow-sm">
+    <div class="max-w-5xl mx-auto flex justify-between items-center">
+      <div class="flex items-center gap-3 cursor-pointer" onclick="app.navHome()">
+        <span class="w-9 h-9 rounded-full bg-vermilion text-white flex items-center justify-center font-japanese-title font-bold text-lg shadow">古</span>
+        <div>
+          <h1 class="font-japanese-title text-xl font-bold tracking-wide">古文 用言 演習帳Ver.1.2</h1>
+          <p class="text-xs text-gray-500 dark:text-gray-400">文法マスター・全方位対応版</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 sm:gap-4">
+        <!-- Audio BGM Switch -->
+        <button id="btn-bgm" onclick="sound.toggleBGM()" class="px-3 py-1.5 rounded-lg border border-gold/50 text-xs sm:text-sm hover:bg-gold/10 transition flex items-center gap-1.5" title="BGMの切替">
+          <i id="icon-bgm" class="fas fa-music text-gold"></i>
+          <span id="label-bgm" class="hidden sm:inline">BGM OFF</span>
+        </button>
+
+        <!-- Audio Mute Switch -->
+        <button id="btn-audio" onclick="sound.toggleSound()" class="px-3 py-1.5 rounded-lg border border-gold/50 text-xs sm:text-sm hover:bg-gold/10 transition flex items-center gap-1.5" title="効果音の切替">
+          <i id="icon-audio" class="fas fa-volume-up text-gold"></i>
+          <span id="label-audio" class="hidden sm:inline">SE ON</span>
+        </button>
+
+        <!-- Night Mode Switch -->
+        <button onclick="app.toggleNightMode()" class="px-3 py-1.5 rounded-lg border border-gold/50 text-xs sm:text-sm hover:bg-gold/10 transition flex items-center gap-1.5" title="宵モード（ダークモード）切替">
+          <i class="fas fa-moon text-indigo dark:text-gold"></i>
+          <span class="hidden sm:inline">宵モード</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="app-container" class="max-w-5xl mx-auto w-full flex-grow p-4 md:p-6 flex flex-col">
+    <!-- Content injected dynamically via JavaScript -->
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-gold/20 py-4 text-center text-xs text-gray-500 dark:text-gray-400">
+    <p>© 古文 用言 演習帳Ver.1.2</p>
+  </footer>
+
+  <script>
+    /* Web Audio Sound Synthesizer for BGM and Sound Effects */
+    class SoundManager {
+      constructor() {
+        this.enabled = true;
+        this.bgmEnabled = false;
+        this.ctx = null;
+        this.bgmTimer = null;
+        this.pentatonicNotes = [220.00, 246.94, 261.63, 329.63, 349.23, 440.00, 493.88, 523.25, 659.25];
+      }
+
+      initCtx() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioContext();
+        }
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      toggleSound() {
+        this.enabled = !this.enabled;
+        const icon = document.getElementById('icon-audio');
+        const label = document.getElementById('label-audio');
+        if (this.enabled) {
+          icon.className = "fas fa-volume-up text-gold";
+          label.innerText = "SE ON";
+          this.playClick();
+        } else {
+          icon.className = "fas fa-volume-mute text-gray-400";
+          label.innerText = "SE OFF";
+        }
+      }
+
+      toggleBGM() {
+        this.initCtx();
+        this.bgmEnabled = !this.bgmEnabled;
+        const icon = document.getElementById('icon-bgm');
+        const label = document.getElementById('label-bgm');
+        
+        if (this.bgmEnabled) {
+          icon.className = "fas fa-music text-vermilion animate-pulse";
+          label.innerText = "BGM ON";
+          this.startBGM();
+        } else {
+          icon.className = "fas fa-music text-gold";
+          label.innerText = "BGM OFF";
+          this.stopBGM();
+        }
+      }
+
+      startBGM() {
+        if (this.bgmTimer) clearInterval(this.bgmTimer);
+        this.playBGMNote();
+        this.bgmTimer = setInterval(() => {
+          if (this.bgmEnabled) {
+            this.playBGMNote();
+          }
+        }, 1800);
+      }
+
+      stopBGM() {
+        if (this.bgmTimer) {
+          clearInterval(this.bgmTimer);
+          this.bgmTimer = null;
+        }
+      }
+
+      playBGMNote() {
+        if (!this.ctx || !this.bgmEnabled) return;
+        const note = this.pentatonicNotes[Math.floor(Math.random() * this.pentatonicNotes.length)];
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(note, this.ctx.currentTime);
+        
+        gain.gain.setValueAtTime(0.001, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.08, this.ctx.currentTime + 0.2);
+        gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 2.5);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        
+        osc.start();
+        osc.stop(this.ctx.currentTime + 2.6);
+      }
+
+      playClick() {
+        if (!this.enabled) return;
+        this.initCtx();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(800, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(400, this.ctx.currentTime + 0.05);
+        gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.05);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.05);
+      }
+
+      playCorrect() {
+        if (!this.enabled) return;
+        this.initCtx();
+        const notes = [523.25, 659.25, 783.99, 1046.50];
+        notes.forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.08);
+          gain.gain.setValueAtTime(0.15, this.ctx.currentTime + idx * 0.08);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + idx * 0.08 + 0.3);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(this.ctx.currentTime + idx * 0.08);
+          osc.stop(this.ctx.currentTime + idx * 0.08 + 0.3);
+        });
+      }
+
+      playIncorrect() {
+        if (!this.enabled) return;
+        this.initCtx();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(220, this.ctx.currentTime);
+        osc.frequency.setValueAtTime(207.65, this.ctx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.4);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.4);
+      }
+    }
+
+    const sound = new SoundManager();
+  </script>
+
+  <script>
+    const GRAMMAR_DATA = {
+      jodoushi: [
+        { name: "る", connection: "未然形（ア段/ナ変/サ変）", type: "下二段型", conjugations: ["れ", "れ", "る", "るる", "るれ", "れよ"], meaning: "受身・尊敬・自発・可能" },
+        { name: "らる", connection: "未然形（ア段/ナ変/サ変以外）", type: "下二段型", conjugations: ["られ", "られ", "らる", "らるる", "らるれ", "られよ"], meaning: "受身・尊敬・自発・可能" },
+        { name: "す", connection: "未然形（ア/ナ変/サ変段）", type: "下二段型", conjugations: ["せ", "せ", "す", "する", "すれ", "せよ"], meaning: "使役・尊敬" },
+        { name: "さす", connection: "未然形（ア段/ナ変/サ変以外）", type: "下二段型", conjugations: ["させ", "させ", "さす", "さする", "さすれ", "させよ"], meaning: "使役・尊敬" },
+        { name: "しめ", connection: "未然形", type: "下二段型", conjugations: ["しめ", "しめ", "しむ", "しむる", "しむれ", "しめよ"], meaning: "使役・尊敬" },
+        { name: "ず", connection: "未然形", type: "特殊（ず/ざり型）", conjugations: ["ず/ざら", "ず/ざり", "ず", "ぬ/ざる", "ね/ざれ", "○/ざれ"], meaning: "打消" },
+        { name: "き", connection: "連用形", type: "特殊（き型）", conjugations: ["せ", "○", "き", "し", "しか", "○"], meaning: "過去（直接体験）" },
+        { name: "けり", connection: "連用形", type: "ラ変型", conjugations: ["けら", "○", "けり", "ける", "けれ", "○"], meaning: "過去（伝聞）・詠嘆" },
+        { name: "つ", connection: "連用形", type: "下二段型", conjugations: ["て", "て", "つ", "つる", "つれ", "てよ"], meaning: "完了・強意・並列" },
+        { name: "ぬ", connection: "連用形", type: "ナ変型", conjugations: ["な", "に", "ぬ", "ぬる", "ぬれ", "ね"], meaning: "完了・強意・並列" },
+        { name: "たり（完了）", connection: "連用形", type: "ラ変型", conjugations: ["たら", "たり", "たり", "たる", "たれ", "たれ"], meaning: "完了・存続" },
+        { name: "り", connection: "サ未四已（サ変未然/四段已然）", type: "ラ変型", conjugations: ["ら", "り", "り", "る", "れ", "れ"], meaning: "完了・存続" },
+        { name: "む（ん）", connection: "未然形", type: "四段型（○・○・む・む・め・○）", conjugations: ["○", "○", "む", "む", "め", "○"], meaning: "推量・意志・勧誘・仮定・婉曲" },
+        { name: "けむ", connection: "連用形", type: "四段型", conjugations: ["○", "○", "けむ", "けむ", "けめ", "○"], meaning: "過去推量・過去原因推量・過去伝聞/婉曲" },
+        { name: "じ", connection: "未然形", type: "無変化", conjugations: ["○", "○", "じ", "じ", "じ", "○"], meaning: "打消推量・打消意志" },
+        { name: "らむ", connection: "終止形（ラ変連体）", type: "四段型", conjugations: ["○", "○", "らむ", "らむ", "らめ", "○"], meaning: "現在推量・原因推量・伝聞/婉曲" },
+        { name: "めり", connection: "終止形（ラ変連体）", type: "ラ変型", conjugations: ["○", "めり", "めり", "める", "めれ", "○"], meaning: "推定（視覚）・婉曲" },
+        { name: "べし", connection: "終止形（ラ変連体）", type: "ク活用型", conjugations: ["べから", "べく/べかり", "べし", "べき/べかる", "べけれ", "○"], meaning: "推量・意志・可能・当然・命令・適当" },
+        { name: "まじ", connection: "終止形（ラ変連体）", type: "シク活用型", conjugations: ["まじから", "まじく/まじかり", "まじ", "まじき/まじかる", "まじけれ", "○"], meaning: "打消推量・打消意志・不可能・打消当然・禁止" },
+        { name: "なり（伝聞）", connection: "終止形（ラ変連体）", type: "ラ変型", conjugations: ["○", "なり", "なり", "なる", "なれ", "○"], meaning: "伝聞・推定（聴覚/音）" },
+        { name: "なり（断定）", connection: "体言・連体形", type: "形容動詞ナリ型", conjugations: ["なら", "なり/に", "なり", "なる", "なれ", "なれ"], meaning: "断定・存在" },
+        { name: "たり（断定）", connection: "体言", type: "形容動詞タリ型", conjugations: ["たら", "たり/と", "たり", "たる", "たれ", "たれ"], meaning: "断定" },
+        { name: "まほし", connection: "未然形", type: "シク活用型", conjugations: ["まほしから", "まほしく/まほしかり", "まほし", "まほしき/まほしかる", "まほしけれ", "○"], meaning: "希望（〜したい）" },
+        { name: "たし", connection: "連用形", type: "ク活用型", conjugations: ["たくから", "たく/たかり", "たし", "たき/たかる", "たけれ", "○"], meaning: "希望（〜したい）" },
+        { name: "まし", connection: "未然形（せば/ましかば）", type: "特殊", conjugations: ["ましか/ませ", "○", "まし", "まし", "ましか", "○"], meaning: "反実仮想・ためらいの意志" },
+        { name: "ごとし", connection: "体言・連体形・「が」「の」", type: "ク活用型", conjugations: ["ごとく", "ごとく", "ごとし", "ごとき", "○", "○"], meaning: "比喩・例示" }
+      ],
+      verbs: [
+        { name: "四段活用", example: "書く", conjugations: ["か（ア）", "き（イ）", "く（ウ）", "く（ウ）", "け（エ）", "け（エ）"], note: "最も基本的な活用。五十音の4段にわたる。" },
+        { name: "上一段活用", example: "見る / 着る", conjugations: ["み（イ）", "み（イ）", "みる（ウ）", "みる（ウ）", "みれ（エ）", "みよ（オ）"], note: "「ひいきにみいる」で覚える（干る・射る/鋳る・着る・似る/煮る・見る・居る/率る）。" },
+        { name: "上二段活用", example: "落つ / 起く", conjugations: ["ち（イ）", "ち（イ）", "つ（ウ）", "つる（ウ）", "つれ（エ）", "ちよ（オ）"], note: "イ段とウ段の二段にわたる。" },
+        { name: "下一段活用", example: "蹴る", conjugations: ["け（エ）", "け（エ）", "ける（ウ）", "ける（ウ）", "けれ（エ）", "けよ（オ）"], note: "「蹴る」の1語のみ！" },
+        { name: "下二段活用", example: "受く / 覚ゆ", conjugations: ["け（エ）", "け（エ）", "く（ウ）", "くる（ウ）", "くれ（エ）", "けよ（オ）"], note: "ウ段とエ段の二段にわたる。動詞の中で最多。" },
+        { name: "カ行変格活用", example: "来（く）", conjugations: ["こ", "き", "く", "くる", "くれ", "こ / こよ"], note: "「来（く）」の1語のみ。" },
+        { name: "サ行変格活用", example: "す / おはす", conjugations: ["せ", "し", "す", "する", "すれ", "せよ"], note: "「す」「おはす」および複合動詞。" },
+        { name: "ナ行変格活用", example: "死ぬ / いぬ", conjugations: ["な", "に", "ぬ", "ぬる", "ぬれ", "ね"], note: "「死ぬ」「いぬ（往ぬ/去ぬ）」の2語のみ。" },
+        { name: "ラ行変格活用", example: "あり / をり", conjugations: ["ら", "り", "り", "る", "れ", "れ"], note: "「あり」「をり」「はべり」「いまそかり」の4語。" }
+      ],
+      adjectives: [
+        { name: "形容詞（ク活用）", example: "高し", hon: ["高く", "高く", "高し", "高き", "高ければ", "○"], kari: ["高から", "高かり", "○", "高かる", "○", "高かれ"], note: "「高く思ふ」となる。" },
+        { name: "形容詞（シク活用）", example: "美し", hon: ["美しく", "美しく", "美し", "美しき", "美しければ", "○"], kari: ["美しから", "美しかり", "○", "美しかる", "○", "美しかれ"], note: "「美しく思ふ」となる。" },
+        { name: "形容動詞（ナリ活用）", example: "静かなり", conjugations: ["静かなら", "静かなり / 静かに", "静かなり", "静かなる", "静かなれ", "静かなれ"], note: "連用形に「なり」と「に」の2形がある。" },
+        { name: "形容動詞（タリ活用）", example: "堂々たり", conjugations: ["堂々とら", "堂々たり / 堂々と", "堂々たり", "堂々たる", "堂々たれ", "堂々たれ"], note: "漢語等について様子を表す。" }
+      ]
+    };
+
+    const QUESTION_BANK = [
+      { id: 1, category: "動詞", question: "古文の「蹴る」の活用型として正しいものを選択しなさい。", options: ["四段活用", "上二段活用", "下一段活用（唯一の下一段動詞）", "カ行変格活用"], answer: 2, explanation: "古文における下一段活用の動詞は「蹴る」の1語のみです。" },
+      { id: 2, category: "動詞", question: "「書きて」が「書いて」に変化するような音便の名称はどれか。", options: ["イ音便", "ウ音便", "撥音便", "促音便"], answer: 0, explanation: "「き」が「い」に変化しているため「イ音便」です。" },
+      { id: 3, category: "動詞", question: "ラ行変格活用動詞（あり・をり等）の終止形語尾の音として正しいものはどれか。", options: ["ウ段音", "イ段音（「り」で終わる）", "エ段音", "ア段音"], answer: 1, explanation: "ラ変型動詞の終止形は「り」（イ段音）で終わります。" },
+      { id: 4, category: "動詞", question: "「おはす」「す」の活用型として正しいものはどれか。", options: ["サ行変格活用", "カ行変格活用", "四段活用", "下二段活用"], answer: 0, explanation: "「す」「おはす」および複合動詞はサ行変格活用です。" },
+      { id: 5, category: "動詞", question: "上一段活用動詞を覚える語呂合わせ「ひいきにみいる」に含まれない動詞はどれか。", options: ["着る", "見る", "蹴る", "射る"], answer: 2, explanation: "「蹴る」は下一段動詞です。" },
+      { id: 6, category: "動詞", question: "「死ぬ」「いぬ」の活用型として正しいものを選択しなさい。", options: ["ナ行変格活用", "ラ行変格活用", "下二段活用", "四段活用"], answer: 0, explanation: "ナ行変格活用動詞は「死ぬ」「いぬ」の2語のみです。" },
+      { id: 7, category: "動詞", question: "「飛びて」が「飛んで」に変化する音便の名称はどれか。", options: ["イ音便", "ウ音便", "撥音便", "促音便"], answer: 2, explanation: "「び」が「ん」に変化するため撥音便です。" },
+      { id: 8, category: "動詞", question: "「立ちて」が「立つて」のように「つ」や「っ」に変わる音便はどれか。", options: ["促音便", "撥音便", "イ音便", "ウ音便"], answer: 0, explanation: "「ち」などが「つ/っ」に変化する現象を促音便と呼びます。" },
+      { id: 9, category: "動詞", question: "「落つ」の活用型として正しいものを選択しなさい。", options: ["上二段活用", "下二段活用", "上一段活用", "四段活用"], answer: 0, explanation: "「落つ」はタ行上二段活用です。" },
+      { id: 10, category: "動詞", question: "「受く」の活用型として正しいものを選択しなさい。", options: ["下二段活用", "上二段活用", "四段活用", "下一段活用"], answer: 0, explanation: "「受く」はカ行下二段活用です。" },
+      { id: 11, category: "動詞", question: "カ行変格活用動詞「来（く）」の未然形と命令形の組み合わせとして正しいものはどれか。", options: ["こ / こ（こよ）", "き / く", "くる / くれ", "こ / き"], answer: 0, explanation: "未然形は「こ」、命令形は「こ（こよ）」です。" },
+      { id: 12, category: "動詞", question: "「覚え」の終止形（基本形）と活用型として正しいものはどれか。", options: ["覚ゆ / ヤ行下二段活用", "覚える / ア行下一段活用", "覚ふ / ハ行四段活用", "覚ゆ / ヤ行上二段活用"], answer: 0, explanation: "基本形は「覚ゆ」でヤ行下二段活用です。" },
+      { id: 13, category: "動詞", question: "動詞「あり」に打消の助動詞「ず」が接続した正しい形はどれか。", options: ["あらず", "ありず", "あるず", "あれず"], answer: 0, explanation: "「ず」は未然形接続なので「あらず」となります。" },
+      { id: 14, category: "動詞", question: "上一段活用動詞「見る」の語幹と語尾の関係として正しい説明はどれか。", options: ["語幹と語尾の区別がない（1文字で語幹兼語尾）", "語幹は「み」、語尾は「る」", "語幹は「みル」、語尾なし", "四段活用と同じ"], answer: 0, explanation: "単音節上一段動詞は語幹と語尾の区別がありません。" },
+      { id: 15, category: "動詞", question: "「咲く」の已然形と命令形の組み合わせとして正しいものはどれか。", options: ["咲け / 咲け", "咲き / 咲く", "咲か / 咲け", "咲くる / 咲け"], answer: 0, explanation: "四段活用では已然形と命令形がどちらも「け」になります。" },
+      { id: 16, category: "動詞", question: "「あり」の活用型として正しいものを選択しなさい。", options: ["ラ行変格活用", "ラ行四段活用", "ナ行変格活用", "サ行変格活用"], answer: 0, explanation: "「あり」はラ行変格活用です。" },
+      { id: 17, category: "動詞", question: "「往ぬ（いぬ）」の活用型として正しいものを選択しなさい。", options: ["ナ行変格活用", "ナ行下二段活用", "ナ行四段活用", "ラ行変格活用"], answer: 0, explanation: "「いぬ」はナ行変格活用です。" },
+      { id: 18, category: "動詞", question: "「得（う）」の活用型として正しいものを選択しなさい。", options: ["ア行下二段活用", "ア行四段活用", "ア行上一段活用", "カ行変格活用"], answer: 0, explanation: "「得」はア行下二段活用です。" },
+      { id: 19, category: "動詞", question: "「寝（ぬ）」の活用型として正しいものはどれか。", options: ["ナ行下二段活用", "ナ行変格活用", "ナ行上一段活用", "四段活用"], answer: 0, explanation: "「寝」はナ行下二段活用です。" },
+      { id: 20, category: "動詞", question: "「経（ふ）」の活用型として正しいものを選択しなさい。", options: ["ハ行下二段活用", "ハ行四段活用", "ハ行上二段活用", "ラ行変格活用"], answer: 0, explanation: "「経」はハ行下二段活用です。" },
+      { id: 21, category: "動詞", question: "「乞ふ（こふ）」の活用型として正しいものはどれか。", options: ["ハ行四段活用", "ハ行下二段活用", "カ行変格活用", "ラ変型"], answer: 0, explanation: "「乞ふ」はハ行四段活用です。" },
+      { id: 22, category: "動詞", question: "「過ぐ（すぐ）」の活用型として正しいものを選択しなさい。", options: ["ガ行下二段活用", "ガ行四段活用", "ガ行上二段活用", "下一段活用"], answer: 0, explanation: "「過ぐ」はガ行下二段活用です。" },
+      { id: 23, category: "動詞", question: "「似る」の活用型として正しいものはどれか。", options: ["上一段活用", "上二段活用", "下二段活用", "四段活用"], answer: 0, explanation: "「似る」は上一段活用です。" },
+      { id: 24, category: "動詞", question: "「語らふ（かたらふ）」の活用型として正しいものはどれか。", options: ["ハ行四段活用", "ハ行下二段活用", "サ行変格活用", "四段活用"], answer: 0, explanation: "「語らふ」はハ行四段活用です。" },
+      { id: 25, category: "動詞", question: "「あり」の未然形として正しいものはどれか。", options: ["あら", "あり", "あれ", "あれど"], answer: 0, explanation: "「あり」の未然形は「あら」です。" },
+
+      { id: 26, category: "形容詞・形容動詞", question: "「いと美味しく」が「いとうつくしう」となる音便の名称はどれか。", options: ["イ音便", "ウ音便", "促音便", "撥音便"], answer: 1, explanation: "連用形語尾「く」が「う」に変化する現象を「ウ音便」と呼びます。" },
+      { id: 27, category: "形容詞・形容動詞", question: "形容動詞「静かなり」の活用型・連体形として正しい組み合わせを選びなさい。", options: ["タリ活用 / 堂々たる", "ナリ活用 / 静かなる", "ク活用 / 静かき", "シク活用 / 静かしき"], answer: 1, explanation: "「静かなり」はナリ活用形容動詞で連体形は「静かなる」です。" },
+      { id: 28, category: "形容詞・形容動詞", question: "形容詞の「ク活用」と「シク活用」を見分ける際、「〜と思ふ」を下に接続したとき「しく思ふ」となるのはどちらか。", options: ["シク活用", "ク活用", "ナリ活用", "タリ活用"], answer: 0, explanation: "「うつくしく思ふ」のように「しく」となるのはシク活用です。" },
+      { id: 29, category: "形容詞・形容動詞", question: "形容詞に補助活用（カリ活用）が存在する主な理由はどれか。", options: ["助動詞を下・接続にスムーズにつなげるため", "中国の漢文から直輸入するため", "和歌の音数を合わせるため", "命令形をなくすため"], answer: 0, explanation: "本活用には助動詞が接続しづらいため、ラ変型のカリ活用が使われます。" },
+      { id: 30, category: "形容詞・形容動詞", question: "「堂々たり」の活用型として正しいものを選択しなさい。", options: ["タリ活用形容動詞", "ナリ活用形容動詞", "ク活用形容詞", "シク活用形容詞"], answer: 0, explanation: "漢語等につく形容動詞をタリ活用形容動詞と呼びます。" },
+      { id: 31, category: "形容詞・形容動詞", question: "形容詞「高し」の本活用・連用形はどれか。", options: ["高く", "高かり", "高し", "高き"], answer: 0, explanation: "本活用連用形は「高く」です。" },
+      { id: 32, category: "形容詞・形容動詞", question: "形容動詞ナリ活用の連用形の2つの形として正しい組み合わせはどれか。", options: ["なり / に", "なら / なり", "なる / なれ", "たら / と"], answer: 0, explanation: "ナリ活用形容動詞の連用形には「なり」と「に」の2種類があります。" },
+      { id: 33, category: "形容詞・形容動詞", question: "「あはれなり」の品詞・活用型として正しいものはどれか。", options: ["ナリ活用形容動詞", "タリ活用形容動詞", "シク活用形容詞", "ラ行変格活用動詞"], answer: 0, explanation: "「あはれなり」はナリ活用形容動詞です。" },
+      { id: 34, category: "形容詞・形容動詞", question: "形容詞（ク活用）の已然形の語尾として正しいものはどれか。", options: ["ければ", "き", "かり", "しか"], answer: 0, explanation: "ク活用形容詞の已然形は「ければ」です。" },
+      { id: 35, category: "形容詞・形容動詞", question: "「幼し」の連体形として正しいものはどれか。", options: ["幼き / 幼かる", "幼し", "幼く", "幼ければ"], answer: 0, explanation: "本活用連体形は「幼き」です。" },
+      { id: 36, category: "形容詞・形容動詞", question: "「いみじ」の活用型として正しいものを選択しなさい。", options: ["シク活用形容詞", "ク活用形容詞", "ナリ活用形容動詞", "タリ活用形容動詞"], answer: 0, explanation: "「いみじ」はシク活用形容詞です。" },
+      { id: 37, category: "形容詞・形容動詞", question: "「清らなり」と「清し」の品詞の違いとして正しいものはどれか。", options: ["「清らなり」は形容動詞、「清し」は形容詞", "どちらも形容詞", "どちらも形容動詞", "「清らなり」は動詞"], answer: 0, explanation: "清らなりは形容動詞、清しは形容詞です。" },
+      { id: 38, category: "形容詞・形容動詞", question: "「めでたし」の已然形として正しいものはどれか。", options: ["めでたければ", "めでたし", "めでたき", "めでたから"], answer: 0, explanation: "已然形は「めでたければ」です。" },
+      { id: 39, category: "形容詞・形容動詞", question: "「あな、面白」のように形容詞の語幹がそのまま感嘆表現として使われる用法を何と呼ぶか。", options: ["語幹用法", "体言用法", "音便用法", "已然用法"], answer: 0, explanation: "語幹のみで感嘆を表す表現を「語幹用法」と呼びます。" },
+      { id: 40, category: "形容詞・形容動詞", question: "タリ活用形容動詞の連体形語尾として正しいものはどれか。", options: ["たる", "たり", "と", "たら"], answer: 0, explanation: "タリ活用の連体形は「たる」です。" },
+      { id: 41, category: "形容詞・形容動詞", question: "「つきづきし」の活用種別として正しいものはどれか。", options: ["シク活用形容詞", "ク活用形容詞", "ナリ活用形容動詞", "タリ活用形容動詞"], answer: 0, explanation: "「つきづきし」はシク活用形容詞です。" },
+      { id: 42, category: "形容詞・形容動詞", question: "「おとなし」の古義（当時の本来の意味）として正しいものはどれか。", options: ["大人らしい・思慮分別がある・主謀者である", "年をとって老化している", "子供っぽい", "無口である"], answer: 0, explanation: "古文の「おとなし」は大人びている・しっかりしている意味です。" },
+      { id: 43, category: "形容詞・形容動詞", question: "「心にくし」の現代語訳として正しいものはどれか。", options: ["奥ゆかしい・上品で心が惹かれる", "にくたらしい・憎い", "気が進まない", "恥ずかしい"], answer: 0, explanation: "「心にくし」は上品で奥ゆかしいという意味です。" },
+      { id: 44, category: "形容詞・形容動詞", question: "「なのめなり」の現代語訳として正しいものはどれか。", options: ["平凡だ・いい加減だ・並み通りだ", "きわめて優れている", "非常に珍しい", "美しい"], answer: 0, explanation: "「なのめなり」は平凡だ、いい加減だという意味です。" },
+      { id: 45, category: "形容詞・形容動詞", question: "「むつまじ」の古義として正しいものはどれか。", options: ["親しい・親密だ", "疎遠である", "うるさい", "気味が悪い"], answer: 0, explanation: "「むつまじ」は親しいという意味です。" },
+      { id: 46, category: "形容詞・形容動詞", question: "「やむごとなし」の意味として適切なものはどれか。", options: ["高貴である・捨てておけない・格別だ", "どうしようもない", "はなはだしい", "おろそかである"], answer: 0, explanation: "高貴である、捨てておけないという意味です。" },
+      { id: 47, category: "形容詞・形容動詞", question: "「あさまし」の主な意味として正しいものはどれか。", options: ["驚きあきれるほどだ・がっかりだ", "素晴らしい", "うれしい", "気恥ずかしい"], answer: 0, explanation: "驚きあきれるほどだという意味です。" },
+      { id: 48, category: "形容詞・形容動詞", question: "「むずかし」の当時の意味として正しいものはどれか。", options: ["気詰まりだ・不快だ・恐ろしい", "難しい・解けない", "嬉しい", "美しい"], answer: 0, explanation: "気詰まりだ、不快だという意味です。" },
+      { id: 49, category: "形容詞・形容動詞", question: "「のどかなり」が表す意味として正しいものはどれか。", options: ["穏やかだ・落ち着いている・安心している", "騒がしい", "急いでいる", "悲しんでいる"], answer: 0, explanation: "穏やかで落ち着いている様子を表します。" },
+      { id: 50, category: "形容詞・形容動詞", question: "形容詞の補助活用（カリ活用）の終止形が「○（なし）」となっている理由はどれか。", options: ["終止形には本活用が存在するため補助活用を使う必要がないから", "文法的なミスで消去されたから", "命令形を表すためだから", "特別な強調を示すから"], answer: 0, explanation: "本活用があるためカリ活用側に終止形はありません。" },
+
+      { id: 51, category: "助動詞", question: "「花咲き『けり』」の助動詞「けり」の文法的意味と接続として正しいものを選択しなさい。", options: ["過去（直接体験） / 連用形接続", "過去（間接伝聞）・詠嘆 / 連用形接続", "現在推量 / 終止形接続", "完了 / 未然形接続"], answer: 1, explanation: "「けり」は連用形接続で過去（伝聞）や詠嘆を表します。" },
+      { id: 52, category: "助動詞", question: "助動詞「り」の接続条件として正しく説明しているものを選びなさい。", options: ["用言の未然形にのみ接続する", "用言の連用形にのみ接続する", "サ変の未然形・四段の命令形（已然形）に接続する（サ未四已）", "体言（名詞）に直接接続する"], answer: 2, explanation: "「り」はサ未四已（サ変未然・四段已然）に接続します。" },
+      { id: 53, category: "助動詞", question: "助動詞「べし」の活用型と接続の正しい組み合わせを選びなさい。", options: ["ク活用型 / 終止形接続（ラ変型は連体形）", "シク活用型 / 連用形接続", "ラ変型 / 未然形接続", "下二段型 / 連体形接続"], answer: 0, explanation: "「べし」はク活用型で終止形接続です。" },
+      { id: 54, category: "助動詞", question: "「風吹かず」の「ず」の未然形・連用形・終止形・連体形・已然形の正しい活用順を選びなさい。", options: ["ず・ず・ず・ぬ・ね", "（ず）/ず・（ず）/ち・ず・ぬ・ね", "（ず）/ざら・（ず）/ざり・ず/ざる・ね/ざれ", "じ・じ・じ・じ・じ"], answer: 2, explanation: "「ず」は本活用と補助活用（ざら・ざり等）を持ちます。" },
+      { id: 55, category: "助動詞", question: "過去の助動詞「き」の未然形と已然形として正しい組み合わせを選びなさい。", options: ["せ / しか", "き / けり", "けら / けれ", "たら / たれ"], answer: 0, explanation: "「き」の未然形は「せ」、已然形は「しか」です。" },
+      { id: 56, category: "助動詞", question: "完了の助動詞「つ」と「ぬ」の文法的ニュアンスの違いとして最も適切な説明はどれか。", options: ["「つ」は意図的・意志的な動作、「ぬ」は自然推移的な動作に用いられやすい", "「つ」は過去、「ぬ」は未来を表す", "「つ」は未然形接続、「ぬ」は体言接続", "二つに意味や使い分けの差は一切ない"], answer: 0, explanation: "「つ」は意図的、「ぬ」は自然発生的な動作を表します。" },
+      { id: 57, category: "助動詞", question: "推量の助動詞「む（ん）」の持つ主な5つの意味に含まれないものはどれか。", options: ["尊敬", "推量", "意志", "仮定・婉曲"], answer: 0, explanation: "「む」の意味は推量・意志・勧誘・仮定・婉曲（スイカカエ）です。" },
+      { id: 58, category: "助動詞", question: "「けむ」の文法的意味として最も適切なものはどれか。", options: ["過去推量・過去原因推量・過去伝聞/婉曲", "現在推量", "将来の意志", "打消推量"], answer: 0, explanation: "「けむ」は過去推量を表します。" },
+      { id: 59, category: "助動詞", question: "助動詞「じ」の文法的意味として正しい組み合わせを選びなさい。", options: ["打消推量・打消意志", "可能・尊敬", "過去伝聞", "強意・完了"], answer: 0, explanation: "「じ」は打消推量・打消意志を表します。" },
+      { id: 60, category: "助動詞", question: "「らむ」の接続条件として正しいものはどれか。", options: ["終止形接続（ラ変型は連体形）", "未然形接続", "連用形接続", "体言接続"], answer: 0, explanation: "「らむ」は現在推量で終止形接続です。" },
+      { id: 61, category: "助動詞", question: "助動詞「めり」の文法的意味として正しいものはどれか。", options: ["視覚的推定・婉曲（〜のように見える/〜のようだ）", "聴覚的伝聞", "強い命令", "過去の記憶"], answer: 0, explanation: "「めり」は視覚的推定・婉曲を表します。" },
+      { id: 62, category: "助動詞", question: "「まじ」の文法的意味（「べし」の打消）として含まれないものはどれか。", options: ["自発", "打消推量", "打消意志", "不可能・禁止"], answer: 0, explanation: "「まじ」に自発の意味はありません。" },
+      { id: 63, category: "助動詞", question: "伝聞・推定の助動詞「なり」の接続として正しいものはどれか。", options: ["終止形接続（ラ変型は連体形）", "連用形接続", "未然形接続", "体言接続"], answer: 0, explanation: "伝聞・推定の「なり」は終止形接続です。" },
+      { id: 64, category: "助動詞", question: "断定の助動詞「なり」の接続として正しいものはどれか。", options: ["体言・連体形接続", "未然形接続", "命令形接続", "已然形接続"], answer: 0, explanation: "断定の「なり」は体言・連体形に接続します。" },
+      { id: 65, category: "助動詞", question: "受身・尊敬・自発・可能の助動詞「る」と「らる」の使い分けルールとして正しいものはどれか。", options: ["「る」は四段・サ変・ナ変の未然形、「らる」はその他の未然形に接続", "「る」は体言、「らる」は用言に接続", "「る」は過去、「らる」は未来", "使い分けは一切ない"], answer: 0, explanation: "ア段音の未然形には「る」、それ以外には「らる」が接続します。" },
+      { id: 66, category: "助動詞", question: "使役・尊敬の助動詞「す」「さす」「しめ」のうち、「さす」が接続する動詞の未然形はどれか。", options: ["四段・サ変・ナ変以外の未然形", "四段活用のみ", "ラ行変格活用のみ", "すべての動詞"], answer: 0, explanation: "「さす」は四段等以外（二段・一段など）の未然形に接続します。" },
+      { id: 67, category: "助動詞", question: "希望の助動詞「たし」と「まほし」の接続の組み合わせとして正しいものはどれか。", options: ["「たし」は連用形接続、「まほし」は未然形接続", "どちらも体言接続", "「たし」は終止形、「まほし」は已然形", "「たし」は未然形、「まほし」は連用形"], answer: 0, explanation: "「たし」は連用形、「まほし」は未然形に接続します。" },
+      { id: 68, category: "助動詞", question: "「もし〜ならば…だろうに（反実仮想）」を表す助動詞「まし」の一般的な接続の形はどれか。", options: ["未然形＋ば … まし", "已然形＋ば … まし", "連用形＋て … まし", "終止形＋なり … まし"], answer: 0, explanation: "反実仮想「まし」は「未然形＋ば 〜 まし」の形で用いられます。" },
+      { id: 69, category: "助動詞", question: "比喩・例示の助動詞「ごとし」の活用型と接続として正しいものはどれか。", options: ["ク活用型 / 体言・連体形・「が」「の」に接続", "シク活用型 / 未然形接続", "ラ変型 / 終止形接続", "無変化型 / 命令形接続"], answer: 0, explanation: "「ごとし」はク活用型で体言や「が」「の」に接続します。" },
+      { id: 70, category: "助動詞", question: "完了の助動詞「たり」の接続として正しいものはどれか。", options: ["用言の連用形に接続", "用言の未然形に接続", "体言に接続", "終止形に接続"], answer: 0, explanation: "完了の「たり」は連用形に接続します。" },
+      { id: 71, category: "助動詞", question: "助動詞「むず」の持つ文法的意味の組み合わせとして正しいものはどれか。", options: ["推量・意志・婉曲・適当（「むとす」が変化したもの）", "過去・完了", "打消・禁止", "比喩・例示"], answer: 0, explanation: "「むず」は「む＋とす」が縮約したものです。" },
+      { id: 72, category: "助動詞", question: "助動詞「まし」の未然形（ませ・ましか）に接続する表現の代表例として正しいものはどれか。", options: ["〜ば（ませば／ましかば）", "〜とて", "〜ながら", "〜ものから"], answer: 0, explanation: "「ましかば〜まし」「ませば〜まし」の形で頻出します。" },
+      { id: 73, category: "助動詞", question: "助動詞「らし」の接続と意味として正しいものはどれか。", options: ["体言・終止形等接続（ラ変型は連体形） / 推定（根拠のある推測）", "連用形接続 / 過去", "未然形接続 / 使役", "命令形接続 / 命令"], answer: 0, explanation: "「らし」は根拠のある推定を表します。" },
+      { id: 74, category: "助動詞", question: "打消の助動詞「ず」の連用形として正しいものを2つ選べ。", options: ["ず / ざり", "ぬ / ざる", "ね / ざれ", "なし / あらず"], answer: 0, explanation: "「ず」の連用形は「ず」と「ざり」です。" },
+      { id: 75, category: "助動詞", question: "助動詞「ごとし」の連用形として正しいものはどれか。", options: ["ごとく", "ごとくし", "ごとき", "ごとなら"], answer: 0, explanation: "「ごとし」の連用形は「ごとく」です。" },
+
+      { id: 76, category: "総合問題", question: "「男もすなる日記といふものを…」の「なる」の識別として適切なものはどれか。", options: ["断定の助動詞「なり」の連体形", "伝聞・推定の助動詞「なり」の終止形", "伝聞・推定の助動詞「なり」の連体形", "ナリ活用形容動詞の語尾"], answer: 2, explanation: "「す」に続く伝聞・推定の助動詞「なり」の連体形です。" },
+      { id: 77, category: "総合問題", question: "「花咲きなむ美しき」の「なむ」の識別として正しいものはどれか。", options: ["強意の係助詞「なむ」", "他者への願望の終助詞「なむ」", "完了「ぬ」未然形＋推量「む」", "ナ変動詞の未然形語尾"], answer: 0, explanation: "文末が「美しき（連体形）」に結んでいるため強意の係助詞です。" },
+      { id: 78, category: "総合問題", question: "「音に聞く」の「に」の識別として適切なものはどれか。", options: ["格助詞の「に」", "断定の助動詞「なり」の連用形", "完了の助動詞「ぬ」の連用形", "ナリ活用形容動詞の語尾"], answer: 0, explanation: "体言「音」につく格助詞の「に」です。" },
+      { id: 79, category: "総合問題", question: "「花咲きにけり」の「に」の識別として正しいものはどれか。", options: ["完了の助動詞「ぬ」の連用形", "格助詞の「に」", "断定の助動詞「なり」の連用形", "接続助詞の「に」"], answer: 0, explanation: "「に＋けり」の「に」は完了の助動詞「ぬ」の連用形です。" },
+      { id: 80, category: "総合問題", question: "「見れば満月なり」の「ば」の文法機能（順接確定条件）として正しい意味はどれか。", options: ["〜すると / 〜ので（已然形＋ば）", "もし〜ならば（未然形＋ば）", "〜けれども（逆接）", "〜しながら（同時）"], answer: 0, explanation: "已然形＋ばは順接確定条件（〜すると、〜ので）を表します。" },
+      { id: 81, category: "総合問題", question: "「花咲かば見む」の「ば」の文法機能（順接仮定条件）として正しい意味はどれか。", options: ["もし〜ならば（未然形＋ば）", "〜したので（已然形＋ば）", "〜するけれども", "〜するとき"], answer: 0, explanation: "未然形＋ばは順接仮定条件（もし〜ならば）を表します。" },
+      { id: 82, category: "総合問題", question: "「咲くのを見たり」の「り」の識別として正しいものはどれか。", options: ["完了・存続の助動詞「り」の終止形", "ラ行変格活用動詞の語尾", "指定の格助詞", "断定の助動詞"], answer: 0, explanation: "サ変未然/四段已然音につく「り」は完了・存続の助動詞「り」です。" },
+      { id: 83, category: "総合問題", question: "「男もすなる」の「す」の識別として正しいものはどれか。", options: ["サ行変格活用動詞「す」の終止形", "使役の助動詞「す」", "尊敬の助動詞「す」", "形容詞の語尾"], answer: 0, explanation: "サ変の動詞「す」の終止形です。" },
+      { id: 84, category: "総合問題", question: "「京へ上る人に任せて」の「て」の品詞・文法識別はどれか。", options: ["接続助詞「て」", "完了の助動詞「つ」の未然形", "打消の助動詞", "格助詞"], answer: 0, explanation: "文と文をつなぐ接続助詞「て」です。" },
+      { id: 85, category: "総合問題", question: "文末に「ゾ・ナム・ヤ・カ」がある場合、文末の活用形はどのように変化するか。", options: ["連体形になる", "已然形になる", "未然形になる", "命令形になる"], answer: 0, explanation: "係り結びにより連体形になります。" },
+      { id: 86, category: "総合問題", question: "文末に「こそ」がある場合、文末の活用形はどのように変化するか。", options: ["已然形になる", "連体形になる", "終止形になる", "未然形になる"], answer: 0, explanation: "「こそ」の結びは已然形になります。" },
+      { id: 87, category: "総合問題", question: "「いかに思ふぞ」の「いかに」の品詞として正しいものはどれか。", options: ["副詞（どのように）", "形容動詞", "助動詞", "接続詞"], answer: 0, explanation: "状態を尋ねる副詞です。" },
+      { id: 88, category: "総合問題", question: "「風吹き給ふ」の「給ふ」が四段活用のときの文法的機能はどれか。", options: ["尊敬の補助動詞（〜なさる）", "謙譲の補助動詞", "丁寧の補助動詞", "使役の助動詞"], answer: 0, explanation: "ハ行四段活用の「給ふ」は尊敬語です。" },
+      { id: 89, category: "総合問題", question: "「世の中に たへて桜の なかりせば 春の心は のどけからまし」の「せば…まし」の文法構造はどれか。", options: ["反実仮想（もし〜なら…だろうに）", "未来への意志", "過去の回想", "強い命令"], answer: 0, explanation: "事実に反する仮定を表す反実仮想の構文です。" },
+      { id: 90, category: "総合問題", question: "「春来ぬと秋去ぬ」の2つの「ぬ」の識別として正しいものはどれか。", options: ["どちらも完了の助動詞「ぬ」の終止形", "前者は打消、後者は完了", "前者は格助詞、後者は接続助詞", "どちらも打消助動詞"], answer: 0, explanation: "どちらも完了の助動詞「ぬ」の終止形です。" },
+      { id: 91, category: "総合問題", question: "「あはれ、秋風ぞ吹く」の「ぞ」の文法的機能はどれか。", options: ["強調（係り結びを起こし、文末を連体形にする）", "疑問", "反語", "比喩"], answer: 0, explanation: "係助詞「ぞ」による強調です。" },
+      { id: 92, category: "総合問題", question: "「おとなしく、心にくき人」の「心にくき」の品詞・活用はどれか。", options: ["シク活用形容詞の連体形", "ク活用形容詞の連体形", "ナリ活用形容動詞", "連動詞"], answer: 0, explanation: "シク活用形容詞の連体形です。" },
+      { id: 93, category: "総合問題", question: "「雨の降れば」の「の」の文法識別として正しいものはどれか。", options: ["主格を表す格助詞（「が」の意味）", "連体修飾格", "同格", "比喩"], answer: 0, explanation: "主格（〜が）を表す格助詞の「の」です。" },
+      { id: 94, category: "総合問題", question: "「人こそ見えね、秋は来にけり」の「ね」の識別として正しいものはどれか。", options: ["打消の助動詞「ず」の已然形（係り結びによる）", "完了の助動詞「ぬ」の命令形", "下二段動詞の語尾", "感動詞"], answer: 0, explanation: "「こそ」の結びを受けた打消助動詞「ず」の已然形です。" },
+      { id: 95, category: "総合問題", question: "「いかで雪の降るらむ」の「いかで」の持つ意味の組み合わせとして正しいものはどれか。", options: ["【疑問】どうして・【反語】どうして〜か、いや〜ない・【願望】なんとかして", "いつ・どこで", "どれほど", "もしも"], answer: 0, explanation: "「いかで」は疑問・反語・願望の意味を持ちます。" },
+      { id: 96, category: "総合問題", question: "「梓弓引きて…」の修飾語句を何と呼ぶか。", options: ["枕詞（まくらことば）", "序詞", "掛詞", "縁語"], answer: 0, explanation: "特定の言葉の前に置かれる修飾語を枕詞と言います。" },
+      { id: 97, category: "総合問題", question: "「鳴く声すなり」の「なり」の識別として正しいものはどれか。", options: ["推定・聴覚の助動詞「なり」の終止形", "断定の助動詞", "形容動詞の語尾", "格助詞"], answer: 0, explanation: "聴覚（声）を根拠にする聴覚的推定の助動詞「なり」です。" },
+      { id: 98, category: "総合問題", question: "「さらに〜ず」の副詞の呼応としての正しい意味はどれか。", options: ["まったく〜ない（強い打消）", "すべて〜である", "もし〜なら", "非常に〜だ"], answer: 0, explanation: "下に打ち消しを伴って強い打消を表します。" },
+      { id: 99, category: "総合問題", question: "「花の色はうつりにけりな」の「な」の文法識別はどれか。", options: ["詠嘆の終助詞", "完了の助動詞", "強意の係助詞", "感動詞"], answer: 0, explanation: "詠嘆の気持ちを表す終助詞「な」です。" },
+      { id: 100, category: "総合問題", question: "古典文法の学習において、用言・助動詞をマスターする最大のメリットとして最もふさわしいものはどれか。", options: ["現代語との違いや係り結びを正確につかみ、文脈や古文の読解スピードが飛躍的に上がるから", "漢字をたくさん覚えられるから", "漢文の書き下し文が完璧に作れるから", "現代の小説が上手に書けるようになるから"], answer: 0, explanation: "正確な文法理解が古文読解の基礎・スピード向上につながります。" }
+    ];
+
+    const SHORT_STORY_QUESTION_BANK = [
+      {
+        id: 101, category: "短文読解演習",
+        work: "『竹取物語』",
+        sentence: "「いまはとて天の羽衣着る折ぞ 君をあはれと思ひいで<span class='text-vermilion font-bold underline'>ける</span>」",
+        question: "傍線部「ける」の文法的意味と活用形として正しいものを選択しなさい。",
+        options: [
+          "過去（伝聞・詠嘆）の助動詞「けり」の連体形（係り結び）",
+          "完了・存続の助動詞「たり」の終止形",
+          "過去推量「けむ」の連用形",
+          "現在推量「らむ」の已然形"
+        ],
+        answer: 0,
+        explanation: "「ぞ」の係り結びによって文末が連体形になっており、「けり」の連体形「ける」です。過去の回想や詠嘆を表します。"
+      },
+      {
+        id: 102, category: "短文読解演習",
+        work: "『土佐日記』",
+        sentence: "「男も<span class='text-vermilion font-bold underline'>す</span>なる日記といふものを、女もしてみむとて<span class='text-vermilion font-bold underline'>する</span>なり」",
+        question: "1つ目の傍線部「す」の品詞・活用形として正しいものを選択しなさい。",
+        options: [
+          "サ行変格活用動詞「す」の終止形",
+          "使役の助動詞「す」の連用形",
+          "断定の助動詞「なり」の未然形",
+          "完了の助動詞「つ」の連体形"
+        ],
+        answer: 0,
+        explanation: "「男もす（終止形）＋なる（伝聞なり）」の構造で、この「す」はサ変動詞「す」の終止形です。"
+      },
+      {
+        id: 103, category: "短文読解演習",
+        work: "『土佐日記』",
+        sentence: "「男もすなる日記といふものを、女もしてみ<span class='text-vermilion font-bold underline'>む</span>とてする<span class='text-vermilion font-bold underline'>なり</span>」",
+        question: "傍線部「む」の文法的意味と接続として正しいものを選択しなさい。",
+        options: [
+          "推量・意志などの助動詞「む」の連体形（または文末での意志）",
+          "過去の助動詞「き」の連用形",
+          "打消の助動詞「ず」の未然形",
+          "完了の助動詞「ぬ」の終止形"
+        ],
+        answer: 0,
+        explanation: "「してみむ（て＋み＋む）」の「む」は未然形（み）に接続する推量・意志等の助動詞です。"
+      },
+      {
+        id: 104, category: "短文読解演習",
+        work: "『竹取物語』",
+        sentence: "「かぐや姫、いと大きに<span class='text-vermilion font-bold underline'>なりにければ</span>…」",
+        question: "傍線部「にければ」に含まれる助動詞の組み合わせとして正しいものはどれか。",
+        options: [
+          "完了の助動詞「ぬ」の連用形 ＋ 過去の助動詞「けり」の已然形",
+          "断定の助動詞「なり」 ＋ 完了の助動詞「つ」",
+          "受身の助動詞「る」 ＋ 推量の助動詞「む」",
+          "打消の助動詞「ず」 ＋ 詠嘆の助動詞"
+        ],
+        answer: 0,
+        explanation: "「に（完了『ぬ』の連用形）＋けり（過去『けり』）＋ば（已然形＋ば＝順接確定条件）」の複合です。頻出の形です！"
+      },
+      {
+        id: 105, category: "短文読解演習",
+        work: "『竹取物語』",
+        sentence: "「この竹の中に、<span class='text-vermilion font-bold underline'>もと光る</span>すずめの子<span class='text-vermilion font-bold underline'>なむ</span>あり<span class='text-vermilion font-bold underline-none'>ける</span>」",
+        question: "傍線部「なむ」の文法識別として正しいものを選択しなさい。",
+        options: [
+          "強意の係助詞（結びの「ける」を連体形にしている）",
+          "完了「ぬ」の未然形 ＋ 推量「む」",
+          "他者への願望を表す終助詞",
+          "断定の助動詞「なり」の活用"
+        ],
+        answer: 0,
+        explanation: "文末が「ける（連体形）」で結ばれているため、この「なむ」は強意の係助詞です。"
+      },
+      {
+        id: 106, category: "短文読解演習",
+        work: "『竹取物語』",
+        sentence: "「あてなる<span class='text-vermilion font-bold underline'>もの</span>、薄紅葉の<span class='text-vermilion font-bold underline'>おほしたる</span>…」",
+        question: "傍線部「おほしたる」の「たる」の文法的意味と接続として正しいものはどれか。",
+        options: [
+          "完了・存続の助動詞「たり」の連体形（連用形接続）",
+          "断定の助動詞「たり」の連体形（体言接続）",
+          "過去の助動詞「き」の連体形",
+          "比喩の助動詞「ごとし」の活用"
+        ],
+        answer: 0,
+        explanation: "「おほし（覆ふ・連用形）」に接続しているため、この「たる」は完了・存続を表す助動詞「たり」の連体形です。"
+      },
+      {
+        id: 107, category: "短文読解演習",
+        work: "『源氏物語』",
+        sentence: "「いづれの御時にか、女御、更衣さぶらひ<span class='text-vermilion font-bold underline'>たまひける</span>」",
+        question: "傍線部「たまひける」の「けり」の文法的意味として正しいものはどれか。",
+        options: [
+          "過去（直接体験・回想） / 連用形接続",
+          "現在推量 / 終止形接続",
+          "推定・婉曲 / 体言接続",
+          "打消推量 / 未然形接続"
+        ],
+        answer: 0,
+        explanation: "連用形（たまひ）に接続する過去の助動詞「けり」の連体形「ける」です。"
+      },
+      {
+        id: 108, category: "短文読解演習",
+        work: "『枕草子』",
+        sentence: "「春はあけぼの。やうやう白くなりゆく山ぎは、すこし<span class='text-vermilion font-bold underline'>あかりて</span>、紫だち<span class='text-vermilion font-bold underline'>たる</span>雲の…」",
+        question: "傍線部「たる」の文法的意味（品詞）として正しいものはどれか。",
+        options: [
+          "完了・存続の助動詞「たり」の連体形",
+          "断定の助動詞「たり」の連体形",
+          "過去の助動詞「き」の連体形",
+          "推定の助動詞「めり」の変形"
+        ],
+        answer: 0,
+        explanation: "「紫だち（連用形）」に接続して存続・完了を表す助動詞「たり」の連体形です。"
+      },
+      {
+        id: 109, category: "短文読解演習",
+        work: "『徒然草』",
+        sentence: "「<span class='text-vermilion font-bold underline'>あらず</span>ば、おのおの<span class='text-vermilion font-bold underline'>すまじき</span>ものは…」",
+        question: "1つ目の傍線部「あらず」の「ず」の文法説明として正しいものはどれか。",
+        options: [
+          "打消の助動詞「ず」の未然形「あら」＋「ず（終止形）」",
+          "完了の助動詞「ぬ」の終止形",
+          "断定の助動詞「なり」の未然形",
+          "推量の助動詞「む」の活用"
+        ],
+        answer: 0,
+        explanation: "ラ変動詞「あり」の未然形（あら）に打消の助動詞「ず」がついて「あらず」となります。"
+      },
+      {
+        id: 110, category: "短文読解演習",
+        work: "『徒然草』",
+        sentence: "「あらずば、おのおの<span class='text-vermilion font-bold underline'>すまじき</span>ものは…」",
+        question: "2つ目の傍線部「まじき」の文法的意味と活用形として正しいものはどれか。",
+        options: [
+          "打消推量・打消当然などの助動詞「まじ」の連体形",
+          "推量の助動詞「べし」の打消・連用形",
+          "可能の助動詞の活用",
+          "希望の助動詞「まほし」の已然形"
+        ],
+        answer: 0,
+        explanation: "「まじ」は「べし」の打ち消し版（打消推量・不可能・禁止など）。下に「もの（体言）」が続くため連体形「まじき」です。"
+      },
+      {
+        id: 111, category: "短文読解演習",
+        work: "『平家物語』",
+        sentence: "「祇園精舎の鐘の声、諸行無常の響き<span class='text-vermilion font-bold underline'>あり</span>。沙羅双樹の花の色、盛者必衰の理を<span class='text-vermilion font-bold underline'>あらはす</span>」",
+        question: "2つ目の傍線部「あらはす」の活用型として正しいものはどれか。",
+        options: [
+          "サ行四段活用動詞の終止形",
+          "サ行変格活用動詞",
+          "下二段活用動詞",
+          "上一段活用動詞"
+        ],
+        answer: 0,
+        explanation: "「あらはす」はサ行四段活用（さ・し・す・す・せ・せ）の終止形です。"
+      },
+      {
+        id: 112, category: "短文読解演習",
+        work: "『方丈記』",
+        sentence: "「ゆく河のながりは絶えずして、<span class='text-vermilion font-bold underline'>しかも</span>もとの水に<span class='text-vermilion font-bold underline'>あらず</span>」",
+        question: "後半の傍線部「あらず」の文法的意味（助動詞）はどれか。",
+        options: [
+          "打消の助動詞「ず」の終止形（ラ変型：あらず）",
+          "完了の助動詞「ぬ」の終止形",
+          "断定の助動詞「なり」",
+          "過去の助動詞「き」"
+        ],
+        answer: 0,
+        explanation: "「あり」の未然形「あら」＋打消の助動詞「ず」で「あらず（ではない）」という打消を表します。"
+      },
+      {
+        id: 113, category: "短文読解演習",
+        work: "『土佐日記』",
+        sentence: "「土佐の国へ<span class='text-vermilion font-bold underline'>流され</span>て、<span class='text-vermilion font-bold underline'>京へ上る</span>人に任せて…」",
+        question: "1つ目の傍線部「流され」の「され」に含まれる助動詞の種類と活用形はどれか。",
+        options: [
+          "受身・尊敬・自発・可能の助動詞「らる」の連用形",
+          "使役の助動詞「さす」の連用形",
+          "完了の助動詞「り」の活用",
+          "過去の助動詞「き」の活用"
+        ],
+        answer: 0,
+        explanation: "「流す（サ行四段・未然形『流さ』）」＋「らる（ア段以外の未然形なので『らる』）」の連用形「られ」が「され」と音便化しています。"
+      },
+      {
+        id: 114, category: "短文読解演習",
+        work: "『竹取物語』",
+        sentence: "「のたまふこと、<span class='text-vermilion font-bold underline'>聞き入れ</span><span class='text-vermilion font-bold underline-none'>られ</span><span class='text-vermilion font-bold underline'>む</span>やは」",
+        question: "文末の「む」の文法的意味（呼応表現）として正しいものはどれか。",
+        options: [
+          "反語（「〜だろうか、いや〜ない」）を構成する推量・意志の助動詞「む」",
+          "純粋な未来の推量",
+          "過去の回想",
+          "現在の原因推量"
+        ],
+        answer: 0,
+        explanation: "「〜むやは（〜だろうか、いや〜ない）」という反語の表現を構成する助動詞「む」です。"
+      },
+      {
+        id: 115, category: "短文読解演習",
+        work: "『大鏡』",
+        sentence: "「その時、いみじく<span class='text-vermilion font-bold underline'>泣き</span><span class='text-vermilion font-bold underline-none'>しか</span>」",
+        question: "傍線部「しか」の文法的意味と活用形として正しいものを選択しなさい。",
+        options: [
+          "過去の助動詞「き」の已然形",
+          "完了の助動詞「つ」の已然形",
+          "打消の助動詞「ず」の已然形",
+          "形容詞の已然形語尾"
+        ],
+        answer: 0,
+        explanation: "過去の助動詞「き」の活用は（せ・○・き・し・しか・○）であり、「しか」は已然形です。"
+      },
+      {
+        id: 116, category: "短文読解演習",
+        work: "『土佐日記』",
+        sentence: "「海面、鏡の<span class='text-vermilion font-bold underline'>ごとく</span><span class='text-vermilion font-bold underline'>なん</span>あり<span class='text-vermilion font-bold underline'>ける</span>」",
+        question: "1つ目の傍線部「ごとく」の品詞・活用形として正しいものはどれか。",
+        options: [
+          "比喩・例示の助動詞「ごとし」の連用形",
+          "シク活用形容詞の連用形",
+          "ナリ活用形容動詞の連用形",
+          "格助詞"
+        ],
+        answer: 0,
+        explanation: "「ごとし」はク活用と同じ変化をするため、連用形は「ごとく（〜のように）」となります。"
+      }
+    ];
+
+    class GrammarApp {
+      constructor() {
+        this.currentView = 'home';
+        this.nightMode = false;
+        
+        // Quiz State
+        this.quizQuestions = [];
+        this.currentIndex = 0;
+        this.score = 0;
+        this.userAnswers = [];
+        this.selectedCategory = 'ALL';
+        this.questionCount = 10;
+      }
+
+      init() {
+        this.navHome();
+      }
+
+      toggleNightMode() {
+        this.nightMode = !this.nightMode;
+        if (this.nightMode) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      }
+
+      /* Navigation Router - Home View */
+      navHome() {
+        this.currentView = 'home';
+        sound.playClick();
+        const container = document.getElementById('app-container');
+        
+        container.innerHTML = `
+          <div class="flex flex-col items-center justify-center py-6 space-y-8 animate-fade-in">
+            <!-- Hero Title Box -->
+            <div class="text-center space-y-3 max-w-xl">
+              <span class="px-3 py-1 bg-gold/20 text-gold text-xs font-bold rounded-full tracking-widest uppercase">全方位対応版</span>
+              <h2 class="font-japanese-title text-3xl sm:text-4xl font-extrabold text-indigo dark:text-gold tracking-wide">
+                古文 用言 演習帳Ver.1.2
+              </h2>
+              <p class="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                助動詞28種・動詞9種・形容詞の活用表に加え、実際の古典作品から出題される「短文読解演習」が新登場！
+              </p>
+            </div>
+
+            <!-- Action Cards (Main Menu) -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl">
+              <!-- Drill / Practice Button -->
+              <div onclick="app.openCategoryModal()" class="bg-white dark:bg-nightCard border-2 border-gold/30 hover:border-gold rounded-xl p-6 shadow-md hover:shadow-xl transition cursor-pointer flex flex-col justify-between group">
+                <div>
+                  <div class="w-12 h-12 rounded-lg bg-vermilion/10 text-vermilion flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition">
+                    <i class="fas fa-pen-nib"></i>
+                  </div>
+                  <h3 class="font-japanese-title text-lg font-bold mb-2 text-indigo dark:text-gray-100">実戦 演習ドリル</h3>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">動詞・形容詞・助動詞の基礎・総合問題（計100問）から演習。</p>
+                </div>
+                <div class="mt-6 flex items-center text-xs font-bold text-vermilion group-hover:translate-x-1 transition">
+                  ドリルを始める <i class="fas fa-arrow-right ml-2"></i>
+                </div>
+              </div>
+
+              <!-- Short Story Reading Drill Button -->
+              <div onclick="app.startShortStoryQuiz()" class="bg-white dark:bg-nightCard border-2 border-vermilion/40 hover:border-vermilion rounded-xl p-6 shadow-md hover:shadow-xl transition cursor-pointer flex flex-col justify-between group bg-gradient-to-br from-vermilion/5 to-transparent">
+                <div>
+                  <div class="w-12 h-12 rounded-lg bg-vermilion text-white flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition shadow">
+                    <i class="fas fa-book-reader"></i>
+                  </div>
+                  <h3 class="font-japanese-title text-lg font-bold mb-2 text-vermilion">短文読解演習 <span class="text-[10px] bg-vermilion text-white px-1.5 py-0.5 rounded">NEW</span></h3>
+                  <p class="text-xs text-gray-600 dark:text-gray-300">竹取物語や土佐日記の実文から、ややこしい助動詞や活用を徹底攻略。</p>
+                </div>
+                <div class="mt-6 flex items-center text-xs font-bold text-vermilion group-hover:translate-x-1 transition">
+                  読解演習を始める <i class="fas fa-arrow-right ml-2"></i>
+                </div>
+              </div>
+
+              <!-- Study / Reference Table Button -->
+              <div onclick="app.navStudy('jodoushi')" class="bg-white dark:bg-nightCard border-2 border-gold/30 hover:border-gold rounded-xl p-6 shadow-md hover:shadow-xl transition cursor-pointer flex flex-col justify-between group">
+                <div>
+                  <div class="w-12 h-12 rounded-lg bg-indigo/10 text-indigo dark:bg-gold/20 dark:text-gold flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition">
+                    <i class="fas fa-scroll"></i>
+                  </div>
+                  <h3 class="font-japanese-title text-lg font-bold mb-2 text-indigo dark:text-gray-100">暗記用 活用表＆赤シート</h3>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">全助動詞・用言の活用表。ワンタップでめくれる暗記シート対応。</p>
+                </div>
+                <div class="mt-6 flex items-center text-xs font-bold text-indigo dark:text-gold group-hover:translate-x-1 transition">
+                  活用表を見る <i class="fas fa-arrow-right ml-2"></i>
+                </div>
+              </div>
+            </div>
+
+            <!-- Category Fast Selection -->
+            <div class="w-full max-w-3xl bg-white/50 dark:bg-nightCard/50 border border-gold/20 rounded-xl p-4">
+              <h4 class="text-xs font-bold text-gray-500 dark:text-gray-400 mb-3 text-center">クイック演習セレクト</h4>
+              <div class="flex flex-wrap gap-2 justify-center">
+                <button onclick="app.openCategoryModal('助動詞')" class="px-3.5 py-1.5 bg-white dark:bg-nightCard border border-gold/40 rounded-lg text-xs font-semibold hover:bg-gold/10 transition"><i class="fas fa-cubes text-vermilion mr-1"></i> 助動詞特訓 (25問)</button>
+                <button onclick="app.startShortStoryQuiz()" class="px-3.5 py-1.5 bg-vermilion/10 text-vermilion border border-vermilion/40 rounded-lg text-xs font-bold hover:bg-vermilion/20 transition"><i class="fas fa-star mr-1"></i> 短文読解演習</button>
+                <button onclick="app.openCategoryModal('動詞')" class="px-3.5 py-1.5 bg-white dark:bg-nightCard border border-gold/40 rounded-lg text-xs font-semibold hover:bg-gold/10 transition">動詞 (25問)</button>
+                <button onclick="app.openCategoryModal('総合問題')" class="px-3.5 py-1.5 bg-white dark:bg-nightCard border border-gold/40 rounded-lg text-xs font-semibold hover:bg-gold/10 transition">総合 (25問)</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      openCategoryModal(presetCategory = null) {
+        sound.playClick();
+        let selectedCategory = presetCategory || 'ALL';
+        let selectedCount = 10;
+
+        const modal = document.createElement('div');
+        modal.id = 'modal-category-select';
+        modal.className = 'fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in';
+        modal.innerHTML = `
+          <div class="bg-white dark:bg-nightCard border-2 border-gold/40 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-5">
+            <div class="text-center space-y-1">
+              <span class="px-2.5 py-0.5 bg-gold/20 text-gold text-xs font-bold rounded-full">演習設定</span>
+              <h3 class="font-japanese-title text-xl font-bold text-indigo dark:text-gray-100">ジャンルと問題数の選択</h3>
+            </div>
+
+            <!-- Category Selection Grid -->
+            <div class="space-y-2">
+              <label class="text-xs font-bold text-gray-500 dark:text-gray-400">1. ジャンルを選択</label>
+              <div class="grid grid-cols-2 gap-2" id="cat-btn-group">
+                <button type="button" onclick="app.selectCategoryBtn(this, '助動詞')" class="cat-btn p-2.5 rounded-xl border border-gold/30 text-xs font-bold text-left hover:bg-gold/10 transition ${selectedCategory === '助動詞' ? 'bg-gold/20 border-gold text-vermilion' : ''}">
+                  <i class="fas fa-cubes mr-1"></i> 助動詞 (25問) ★おすすめ
+                </button>
+                <button type="button" onclick="app.selectCategoryBtn(this, '動詞')" class="cat-btn p-2.5 rounded-xl border border-gold/30 text-xs font-bold text-left hover:bg-gold/10 transition ${selectedCategory === '動詞' ? 'bg-gold/20 border-gold text-vermilion' : ''}">
+                  <i class="fas fa-book-open mr-1"></i> 動詞 (25問)
+                </button>
+                <button type="button" onclick="app.selectCategoryBtn(this, '形容詞・形容動詞')" class="cat-btn p-2.5 rounded-xl border border-gold/30 text-xs font-bold text-left hover:bg-gold/10 transition ${selectedCategory === '形容詞・形容動詞' ? 'bg-gold/20 border-gold text-vermilion' : ''}">
+                  <i class="fas fa-feather mr-1"></i> 形容詞・形容動詞 (25問)
+                </button>
+                <button type="button" onclick="app.selectCategoryBtn(this, '総合問題')" class="cat-btn p-2.5 rounded-xl border border-gold/30 text-xs font-bold text-left hover:bg-gold/10 transition ${selectedCategory === '総合問題' ? 'bg-gold/20 border-gold text-vermilion' : ''}">
+                  <i class="fas fa-layer-group mr-1"></i> 総合問題 (25問)
+                </button>
+                <button type="button" onclick="app.selectCategoryBtn(this, 'ALL')" class="cat-btn col-span-2 p-2.5 rounded-xl border border-gold/30 text-xs font-bold text-center hover:bg-gold/10 transition ${selectedCategory === 'ALL' ? 'bg-gold/20 border-gold text-vermilion' : ''}">
+                  <i class="fas fa-globe mr-1"></i> 全ジャンルからランダム出題 (全100問)
+                </button>
+              </div>
+            </div>
+
+            <!-- Question Count Choice -->
+            <div class="space-y-2">
+              <label class="text-xs font-bold text-gray-500 dark:text-gray-400">2. 問題数を選択</label>
+              <div class="grid grid-cols-4 gap-2" id="count-btn-group">
+                <button type="button" onclick="app.selectCountBtn(this, 5)" class="count-btn p-2 rounded-xl border border-gold/30 text-xs font-bold text-center hover:bg-gold/10 transition">
+                  5問
+                </button>
+                <button type="button" onclick="app.selectCountBtn(this, 10)" class="count-btn p-2 rounded-xl border border-gold/30 text-xs font-bold text-center hover:bg-gold/10 transition bg-gold/20 border-gold text-vermilion">
+                  10問
+                </button>
+                <button type="button" onclick="app.selectCountBtn(this, 15)" class="count-btn p-2 rounded-xl border border-gold/30 text-xs font-bold text-center hover:bg-gold/10 transition">
+                  15問
+                </button>
+                <button type="button" onclick="app.selectCountBtn(this, 999)" class="count-btn p-2 rounded-xl border border-gold/30 text-xs font-bold text-center hover:bg-gold/10 transition">
+                  全問
+                </button>
+              </div>
+            </div>
+
+            <div class="pt-2 space-y-2">
+              <button onclick="app.confirmAndStartQuiz()" class="w-full py-3 bg-vermilion text-white font-bold rounded-xl text-sm shadow hover:bg-red-700 transition flex items-center justify-center gap-2">
+                <i class="fas fa-play"></i> 演習を開始する
+              </button>
+              <button onclick="document.getElementById('modal-category-select').remove()" class="w-full py-2 text-xs font-semibold text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition">
+                キャンセル
+              </button>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+
+        modal.dataset.selectedCategory = selectedCategory;
+        modal.dataset.selectedCount = selectedCount;
+      }
+
+      selectCategoryBtn(btn, cat) {
+        sound.playClick();
+        const modal = document.getElementById('modal-category-select');
+        modal.dataset.selectedCategory = cat;
+        
+        document.querySelectorAll('.cat-btn').forEach(b => {
+          b.classList.remove('bg-gold/20', 'border-gold', 'text-vermilion');
+        });
+        btn.classList.add('bg-gold/20', 'border-gold', 'text-vermilion');
+      }
+
+      selectCountBtn(btn, count) {
+        sound.playClick();
+        const modal = document.getElementById('modal-category-select');
+        modal.dataset.selectedCount = count;
+
+        document.querySelectorAll('.count-btn').forEach(b => {
+          b.classList.remove('bg-gold/20', 'border-gold', 'text-vermilion');
+        });
+        btn.classList.add('bg-gold/20', 'border-gold', 'text-vermilion');
+      }
+
+      confirmAndStartQuiz() {
+        const modal = document.getElementById('modal-category-select');
+        if (!modal) return;
+        
+        const category = modal.dataset.selectedCategory || 'ALL';
+        const count = parseInt(modal.dataset.selectedCount) || 10;
+        
+        modal.remove();
+        this.startQuiz(category, count);
+      }
+
+      // ★選択肢をランダムにシャッフルするヘルパー関数
+      prepareShuffledQuestion(q) {
+        // 各選択肢に正解かどうかのフラグを持たせてオブジェクト化
+        let mappedOptions = q.options.map((opt, idx) => ({
+          text: opt,
+          isCorrect: idx === q.answer
+        }));
+
+        // シャッフル
+        mappedOptions.sort(() => Math.random() - 0.5);
+
+        // 新しい正解インデックスを特定
+        let newCorrectIndex = mappedOptions.findIndex(item => item.isCorrect);
+
+        return {
+          ...q,
+          shuffledOptions: mappedOptions.map(item => item.text),
+          correctIndex: newCorrectIndex
+        };
+      }
+
+      startQuiz(category, count = 10) {
+        sound.playClick();
+        this.selectedCategory = category;
+        
+        let available = [];
+        if (category === 'ALL') {
+          available = [...QUESTION_BANK];
+        } else {
+          available = QUESTION_BANK.filter(q => q.category === category);
+        }
+        
+        available.sort(() => Math.random() - 0.5);
+        
+        let rawQuestions = (count && count < available.length) ? available.slice(0, count) : available;
+
+        // 各問題の選択肢をシャッフル処理
+        this.quizQuestions = rawQuestions.map(q => this.prepareShuffledQuestion(q));
+
+        this.currentIndex = 0;
+        this.score = 0;
+        this.userAnswers = [];
+        this.currentView = 'drill';
+        
+        this.renderQuestion();
+      }
+
+      startShortStoryQuiz() {
+        sound.playClick();
+        this.selectedCategory = '短文読解演習';
+        let available = [...SHORT_STORY_QUESTION_BANK];
+        available.sort(() => Math.random() - 0.5);
+        
+        // 各問題の選択肢をシャッフル処理
+        this.quizQuestions = available.map(q => this.prepareShuffledQuestion(q));
+        this.currentIndex = 0;
+        this.score = 0;
+        this.userAnswers = [];
+        this.currentView = 'short_story';
+
+        this.renderShortStoryQuestion();
+      }
+
+      renderShortStoryQuestion() {
+        const container = document.getElementById('app-container');
+        const q = this.quizQuestions[this.currentIndex];
+        const progressPercent = Math.round(((this.currentIndex) / this.quizQuestions.length) * 100);
+
+        container.innerHTML = `
+          <div class="max-w-2xl mx-auto w-full space-y-6">
+            <!-- Progress & Abort Bar -->
+            <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+              <span class="font-bold text-vermilion">短文読解演習：第 ${this.currentIndex + 1} 問 / 全 ${this.quizQuestions.length} 問</span>
+              <button onclick="app.confirmAbort()" class="hover:text-red-500 transition flex items-center gap-1">
+                <i class="fas fa-times-circle"></i> 演習を中断
+              </button>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="w-full bg-gray-200 dark:bg-gray-700 h-2 rounded-full overflow-hidden">
+              <div class="bg-vermilion h-full transition-all duration-300" style="width: ${progressPercent}%"></div>
+            </div>
+
+            <!-- Question Card -->
+            <div class="bg-white dark:bg-nightCard border-2 border-vermilion/40 rounded-2xl p-6 sm:p-8 shadow-lg space-y-6">
+              <div class="flex items-center justify-between border-b border-gold/20 pb-3">
+                <span class="px-3 py-1 bg-vermilion/10 text-vermilion text-xs font-bold rounded-full">
+                  ${q.work}
+                </span>
+                <span class="text-xs text-gray-400">正解数: ${this.score}</span>
+              </div>
+
+              <!-- 原典の抜粋文表示枠 -->
+              <div class="bg-washi dark:bg-nightSumi border border-gold/30 rounded-xl p-4 text-center">
+                <p class="text-xs text-gray-500 mb-1">【原典の一文】</p>
+                <p class="font-japanese-title text-base sm:text-lg font-bold text-indigo dark:text-gray-100 tracking-wide">
+                  ${q.sentence}
+                </p>
+              </div>
+
+              <h3 class="font-japanese-title text-base sm:text-lg font-bold leading-relaxed text-indigo dark:text-gray-100">
+                ${q.question}
+              </h3>
+
+              <!-- Options (Shuffled) -->
+              <div class="space-y-3 pt-2">
+                ${q.shuffledOptions.map((opt, idx) => `
+                  <button onclick="app.submitShortStoryAnswer(${idx})" class="w-full p-4 text-left rounded-xl border border-gray-200 dark:border-gray-700 hover:border-vermilion hover:bg-vermilion/10 transition text-sm sm:text-base font-medium flex items-start gap-3 group">
+                    <span class="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-bold flex items-center justify-center text-xs group-hover:bg-vermilion group-hover:text-white transition flex-shrink-0 mt-0.5">
+                      ${['ア', 'イ', 'ウ', 'エ'][idx]}
+                    </span>
+                    <span class="flex-grow">${opt}</span>
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      submitShortStoryAnswer(choiceIdx) {
+        const q = this.quizQuestions[this.currentIndex];
+        const isCorrect = choiceIdx === q.correctIndex;
+        
+        if (isCorrect) {
+          sound.playCorrect();
+          this.score++;
+        } else {
+          sound.playIncorrect();
+        }
+
+        this.userAnswers.push({
+          question: q,
+          userChoice: choiceIdx,
+          isCorrect: isCorrect
+        });
+
+        this.showExplanationModal(q, choiceIdx, isCorrect, true);
+      }
+
+      renderQuestion() {
+        const container = document.getElementById('app-container');
+        const q = this.quizQuestions[this.currentIndex];
+        const progressPercent = Math.round(((this.currentIndex) / this.quizQuestions.length) * 100);
+
+        container.innerHTML = `
+          <div class="max-w-2xl mx-auto w-full space-y-6">
+            <!-- Progress & Abort Bar -->
+            <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+              <span class="font-bold text-vermilion">第 ${this.currentIndex + 1} 問 / 全 ${this.quizQuestions.length} 問</span>
+              <button onclick="app.confirmAbort()" class="hover:text-red-500 transition flex items-center gap-1">
+                <i class="fas fa-times-circle"></i> 演習を中断
+              </button>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="w-full bg-gray-200 dark:bg-gray-700 h-2 rounded-full overflow-hidden">
+              <div class="bg-gold h-full transition-all duration-300" style="width: ${progressPercent}%"></div>
+            </div>
+
+            <!-- Question Card -->
+            <div class="bg-white dark:bg-nightCard border-2 border-gold/40 rounded-2xl p-6 sm:p-8 shadow-lg space-y-6">
+              <div class="flex items-center justify-between border-b border-gold/20 pb-3">
+                <span class="px-3 py-1 bg-indigo/10 dark:bg-gold/20 text-indigo dark:text-gold text-xs font-bold rounded-full">
+                  ${q.category}
+                </span>
+                <span class="text-xs text-gray-400">正解数: ${this.score}</span>
+              </div>
+
+              <h3 class="font-japanese-title text-lg sm:text-xl font-bold leading-relaxed text-indigo dark:text-gray-100">
+                ${q.question}
+              </h3>
+
+              <!-- Options (Shuffled) -->
+              <div class="space-y-3 pt-2">
+                ${q.shuffledOptions.map((opt, idx) => `
+                  <button onclick="app.submitAnswer(${idx})" class="w-full p-4 text-left rounded-xl border border-gray-200 dark:border-gray-700 hover:border-gold hover:bg-gold/10 transition text-sm sm:text-base font-medium flex items-start gap-3 group">
+                    <span class="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-bold flex items-center justify-center text-xs group-hover:bg-vermilion group-hover:text-white transition flex-shrink-0 mt-0.5">
+                      ${['ア', 'イ', 'ウ', 'エ'][idx]}
+                    </span>
+                    <span class="flex-grow">${opt}</span>
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      submitAnswer(choiceIdx) {
+        const q = this.quizQuestions[this.currentIndex];
+        const isCorrect = choiceIdx === q.correctIndex;
+        
+        if (isCorrect) {
+          sound.playCorrect();
+          this.score++;
+        } else {
+          sound.playIncorrect();
+        }
+
+        this.userAnswers.push({
+          question: q,
+          userChoice: choiceIdx,
+          isCorrect: isCorrect
+        });
+
+        this.showExplanationModal(q, choiceIdx, isCorrect, false);
+      }
+
+      showExplanationModal(q, userAnsIdx, isCorrect, isShortStory = false) {
+        const modal = document.createElement('div');
+        modal.id = 'modal-explanation';
+        modal.className = 'fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in';
+        
+        modal.innerHTML = `
+          <div class="bg-white dark:bg-nightCard border-2 border-gold/40 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center gap-3">
+              <span class="w-10 h-10 rounded-full flex items-center justify-center text-xl text-white font-bold shadow ${isCorrect ? 'bg-green-600' : 'bg-vermilion'}">
+                <i class="fas ${isCorrect ? 'fa-check' : 'fa-times'}"></i>
+              </span>
+              <div>
+                <h3 class="font-japanese-title text-xl font-bold ${isCorrect ? 'text-green-600' : 'text-vermilion'}">
+                  ${isCorrect ? '正解！' : '不正解…'}
+                </h3>
+                <p class="text-xs text-gray-400">正解は：${['ア', 'イ', 'ウ', 'エ'][q.correctIndex]} 「${q.shuffledOptions[q.correctIndex]}」</p>
+              </div>
+            </div>
+
+            <div class="bg-washi dark:bg-nightSumi p-4 rounded-xl border border-gold/30 text-sm space-y-2">
+              <p class="font-bold text-indigo dark:text-gold text-xs uppercase tracking-wider">解説</p>
+              <p class="text-gray-700 dark:text-gray-200 leading-relaxed">${q.explanation}</p>
+            </div>
+
+            <button onclick="app.nextQuestion(${isShortStory})" class="w-full py-3 bg-indigo dark:bg-gold dark:text-sumi text-white font-bold rounded-xl text-sm shadow hover:opacity-90 transition flex items-center justify-center gap-2">
+              次の問題へ <i class="fas fa-arrow-right"></i>
+            </button>
+          </div>
+        `;
+        document.body.appendChild(modal);
+      }
+
+      nextQuestion(isShortStory = false) {
+        sound.playClick();
+        const modal = document.getElementById('modal-explanation');
+        if (modal) modal.remove();
+
+        this.currentIndex++;
+        if (this.currentIndex < this.quizQuestions.length) {
+          if (isShortStory) {
+            this.renderShortStoryQuestion();
+          } else {
+            this.renderQuestion();
+          }
+        } else {
+          this.renderResult();
+        }
+      }
+
+      confirmAbort() {
+        sound.playClick();
+        if (confirm("演習を中断してトップに戻りますか？")) {
+          this.navHome();
+        }
+      }
+
+      renderResult() {
+        this.currentView = 'result';
+        sound.playClick();
+        const container = document.getElementById('app-container');
+        const percentage = Math.round((this.score / this.quizQuestions.length) * 100);
+
+        let rank = "可";
+        let color = "text-yellow-600";
+        if (percentage >= 90) { rank = "秀（免許皆伝）"; color = "text-gold"; }
+        else if (percentage >= 70) { rank = "優（文法上級）"; color = "text-indigo dark:text-gold"; }
+        else if (percentage >= 50) { rank = "良（修練中）"; color = "text-blue-600"; }
+
+        const isShortStoryResult = this.selectedCategory === '短文読解演習';
+
+        container.innerHTML = `
+          <div class="max-w-2xl mx-auto w-full space-y-8 animate-fade-in">
+            <!-- Score Card -->
+            <div class="bg-white dark:bg-nightCard border-2 border-gold/40 rounded-2xl p-8 text-center shadow-xl space-y-4">
+              <span class="px-3 py-1 bg-gold/20 text-gold text-xs font-bold rounded-full">${this.selectedCategory} 結果</span>
+              <h2 class="font-japanese-title text-3xl font-extrabold text-indigo dark:text-gray-100">演習修了</h2>
+              
+              <div class="py-4">
+                <div class="text-5xl font-black ${color} font-japanese-title">${percentage}<span class="text-2xl">%</span></div>
+                <p class="text-sm text-gray-500 mt-1">正解数: ${this.score} / ${this.quizQuestions.length} 問</p>
+                <p class="text-lg font-bold mt-2 font-japanese-title">${rank}</p>
+              </div>
+
+              <div class="flex flex-wrap gap-3 justify-center pt-2">
+                ${isShortStoryResult ? `
+                  <button onclick="app.startShortStoryQuiz()" class="px-6 py-3 bg-vermilion text-white font-bold rounded-xl text-sm shadow hover:bg-red-700 transition">
+                    <i class="fas fa-redo mr-1"></i> もう一度読解演習
+                  </button>
+                ` : `
+                  <button onclick="app.openCategoryModal('${this.selectedCategory}')" class="px-6 py-3 bg-vermilion text-white font-bold rounded-xl text-sm shadow hover:bg-red-700 transition">
+                    <i class="fas fa-redo mr-1"></i> もう一度挑戦
+                  </button>
+                `}
+                <button onclick="app.navHome()" class="px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-bold rounded-xl text-sm hover:bg-gray-300 transition">
+                  <i class="fas fa-home mr-1"></i> ホームへ戻る
+                </button>
+              </div>
+            </div>
+
+            <!-- Review Answer History -->
+            <div class="space-y-4">
+              <h3 class="font-japanese-title text-lg font-bold border-b border-gold/30 pb-2">解答振り返り一覧</h3>
+              <div class="space-y-3">
+                ${this.userAnswers.map((item, idx) => `
+                  <div class="bg-white dark:bg-nightCard border border-gold/20 rounded-xl p-4 space-y-2">
+                    <div class="flex items-start justify-between gap-2">
+                      <span class="font-bold text-xs text-gray-400">問 ${idx + 1}</span>
+                      <span class="px-2 py-0.5 rounded text-xs font-bold ${item.isCorrect ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                        ${item.isCorrect ? '正解' : '不正解'}
+                      </span>
+                    </div>
+                    ${item.question.work ? `<p class="text-xs font-bold text-vermilion">${item.question.work}: ${item.question.sentence}</p>` : ''}
+                    <p class="text-sm font-semibold">${item.question.question}</p>
+                    <p class="text-xs text-gray-500">あなたの回答: ${item.question.shuffledOptions[item.userChoice]}</p>
+                    <p class="text-xs text-indigo dark:text-gold font-bold">正解: ${item.question.shuffledOptions[item.question.correctIndex]}</p>
+                    <p class="text-xs bg-washi dark:bg-nightSumi p-2 rounded text-gray-600 dark:text-gray-300">${item.question.explanation}</p>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      navStudy(tab = 'jodoushi') {
+        this.currentView = 'study';
+        sound.playClick();
+        const container = document.getElementById('app-container');
+
+        container.innerHTML = `
+          <div class="space-y-6 animate-fade-in">
+            <!-- Header Tabs & Red Sheet Toggle -->
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-gold/30 pb-4">
+              <div>
+                <h2 class="font-japanese-title text-2xl font-bold text-indigo dark:text-gold">文法 活用表＆暗記シート</h2>
+                <p class="text-xs text-gray-500 dark:text-gray-400">赤色マスをタップすると、それぞれの箇所が個別にめくれます。</p>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <button onclick="app.toggleAllRedSheets()" class="px-3.5 py-1.5 bg-vermilion text-white text-xs font-bold rounded-lg shadow hover:bg-red-700 transition flex items-center gap-1.5">
+                  <i class="fas fa-eye"></i> 赤シート全解禁 / 一括覆い
+                </button>
+              </div>
+            </div>
+
+            <!-- Tab Buttons -->
+            <div class="flex border-b border-gray-200 dark:border-gray-700 text-sm font-bold">
+              <button onclick="app.navStudy('jodoushi')" class="px-5 py-2.5 border-b-2 transition ${tab === 'jodoushi' ? 'border-vermilion text-vermilion' : 'border-transparent text-gray-500 hover:text-gray-700'}">
+                <i class="fas fa-cubes mr-1"></i> 助動詞 (28種)
+              </button>
+              <button onclick="app.navStudy('verbs')" class="px-5 py-2.5 border-b-2 transition ${tab === 'verbs' ? 'border-vermilion text-vermilion' : 'border-transparent text-gray-500 hover:text-gray-700'}">
+                <i class="fas fa-book-open mr-1"></i> 動詞 (9活用)
+              </button>
+              <button onclick="app.navStudy('adjectives')" class="px-5 py-2.5 border-b-2 transition ${tab === 'adjectives' ? 'border-vermilion text-vermilion' : 'border-transparent text-gray-500 hover:text-gray-700'}">
+                <i class="fas fa-feather mr-1"></i> 形容詞・形容動詞
+              </button>
+            </div>
+
+            <!-- Table Content Area -->
+            <div class="bg-white dark:bg-nightCard border border-gold/30 rounded-2xl p-4 sm:p-6 shadow-md overflow-x-auto">
+              ${this.renderGrammarTable(tab)}
+            </div>
+          </div>
+        `;
+      }
+
+      renderGrammarTable(tab) {
+        if (tab === 'jodoushi') {
+          return `
+            <table class="w-full text-left text-xs sm:text-sm border-collapse min-w-[650px]">
+              <thead>
+                <tr class="bg-gold/10 text-indigo dark:text-gold border-b border-gold/30 font-bold">
+                  <th class="p-3">助動詞</th>
+                  <th class="p-3">接続</th>
+                  <th class="p-3">活用型</th>
+                  <th class="p-3">未然・連用・終止・連体・已然・命令</th>
+                  <th class="p-3">主な意味</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                ${GRAMMAR_DATA.jodoushi.map(j => `
+                  <tr class="hover:bg-gold/5 transition">
+                    <td class="p-3 font-bold text-vermilion font-japanese-title text-base">${j.name}</td>
+                    <td class="p-3"><span class="red-sheet-hidden" onclick="app.toggleRedSheet(this)">${j.connection}</span></td>
+                    <td class="p-3 text-gray-500">${j.type}</td>
+                    <td class="p-3 font-mono">
+                      <span class="red-sheet-hidden" onclick="app.toggleRedSheet(this)">${j.conjugations.join(' ・ ')}</span>
+                    </td>
+                    <td class="p-3"><span class="red-sheet-hidden" onclick="app.toggleRedSheet(this)">${j.meaning}</span></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          `;
+        } else if (tab === 'verbs') {
+          return `
+            <table class="w-full text-left text-xs sm:text-sm border-collapse min-w-[650px]">
+              <thead>
+                <tr class="bg-gold/10 text-indigo dark:text-gold border-b border-gold/30 font-bold">
+                  <th class="p-3">活用型</th>
+                  <th class="p-3">代表語</th>
+                  <th class="p-3">活用語尾（未然・連用・終止・連体・已然・命令）</th>
+                  <th class="p-3">注意事項・覚える語</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                ${GRAMMAR_DATA.verbs.map(v => `
+                  <tr class="hover:bg-gold/5 transition">
+                    <td class="p-3 font-bold text-indigo dark:text-gold font-japanese-title">${v.name}</td>
+                    <td class="p-3 font-bold">${v.example}</td>
+                    <td class="p-3 font-mono">
+                      <span class="red-sheet-hidden" onclick="app.toggleRedSheet(this)">${v.conjugations.join(' ・ ')}</span>
+                    </td>
+                    <td class="p-3 text-xs text-gray-500">${v.note}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          `;
+        } else if (tab === 'adjectives') {
+          return `
+            <div class="space-y-6">
+              ${GRAMMAR_DATA.adjectives.map(a => `
+                <div class="border border-gold/20 rounded-xl p-4 space-y-3">
+                  <div class="flex items-center justify-between border-b border-gold/20 pb-2">
+                    <h4 class="font-japanese-title text-base font-bold text-indigo dark:text-gold">${a.name} （例：${a.example}）</h4>
+                    <span class="text-xs text-gray-400">${a.note}</span>
+                  </div>
+                  ${a.hon ? `
+                    <div class="text-xs space-y-1 font-mono">
+                      <p><span class="font-bold text-gray-500">本活用:</span> <span class="red-sheet-hidden" onclick="app.toggleRedSheet(this)">${a.hon.join(' ・ ')}</span></p>
+                      <p><span class="font-bold text-gray-500">カリ活用:</span> <span class="red-sheet-hidden" onclick="app.toggleRedSheet(this)">${a.kari.join(' ・ ')}</span></p>
+                    </div>
+                  ` : `
+                    <div class="text-xs font-mono">
+                      <p><span class="font-bold text-gray-500">活用語尾:</span> <span class="red-sheet-hidden" onclick="app.toggleRedSheet(this)">${a.conjugations.join(' ・ ')}</span></p>
+                    </div>
+                  `}
+                </div>
+              `).join('')}
+            </div>
+          `;
+        }
+      }
+
+      toggleRedSheet(el) {
+        sound.playClick();
+        el.classList.toggle('revealed');
+      }
+
+      toggleAllRedSheets() {
+        sound.playClick();
+        const items = document.querySelectorAll('.red-sheet-hidden');
+        if (items.length === 0) return;
+
+        const anyHidden = Array.from(items).some(i => !i.classList.contains('revealed'));
+        items.forEach(i => {
+          if (anyHidden) {
+            i.classList.add('revealed');
+          } else {
+            i.classList.remove('revealed');
+          }
+        });
+      }
+    }
+
+    const app = new GrammarApp();
+    window.onload = () => {
+      app.init();
+    };
+  </script>
+</body>
+</html>
